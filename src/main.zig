@@ -6,7 +6,7 @@ pub fn main() !void {
     // stdout is for the actual output of your application, for example if you
     // are implementing gzip, then only the compressed bytes should be sent to
     // stdout, not any debugging messages.
-    const input = "(); let adil = 5;";
+    const input = "(); let adil = 5; 23123; bob";
     std.debug.print("{s}\n", .{input});
     var buffer: [999]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
@@ -88,6 +88,20 @@ const Lexer = struct {
             else => return false,
         };
     }
+    fn getNumToken(self: *Lexer) !Token {
+        const ch = try self.getWordWithCheck(isNum);
+
+        return Token{ .Num = ch };
+    }
+
+    fn getAlphToken(self: *Lexer) !Token {
+        const ch = try self.getWord();
+        if (std.mem.eql(u8, ch, "let") or std.mem.eql(u8, ch, "LET")) {
+            return Token.Let;
+        } else {
+            return Token{ .Ident = ch };
+        }
+    }
     pub fn lex(self: *Lexer) !std.ArrayList(?Token) {
         var list = std.ArrayList(?Token).init(self.allocator);
         try list.append(switch (self.Input[self.Position]) {
@@ -99,19 +113,9 @@ const Lexer = struct {
             '}' => Token.LBrace,
             '[' => Token.LBracket,
             ']' => Token.RBracket,
-            'a'...'z', 'A'...'Z' => zz: {
-                const ch = try self.getWord();
-                if (std.mem.eql(u8, ch, "let") or std.mem.eql(u8, ch, "LET")) {
-                    break :zz Token.Let;
-                } else {
-                    break :zz Token{ .Ident = ch };
-                }
-            },
-            '0'...'9' => za: {
-                const ch = try self.getWordWithCheck(isNum);
+            'a'...'z', 'A'...'Z' => try self.getAlphToken(),
+            '0'...'9' => try self.getNumToken(),
 
-                break :za Token{ .Num = ch };
-            },
             ' ' => null,
             else => Token.EOF,
         });
@@ -126,20 +130,8 @@ const Lexer = struct {
                 '}' => Token.LBrace,
                 '[' => Token.LBracket,
                 ']' => Token.RBracket,
-                '0'...'9' => za: {
-                    const ch = try self.getWordWithCheck(isNum);
-
-                    break :za Token{ .Num = ch };
-                },
-
-                'a'...'z', 'A'...'Z' => zz: {
-                    const ch = try self.getWord();
-                    if (std.mem.eql(u8, ch, "let") or std.mem.eql(u8, ch, "LET")) {
-                        break :zz Token.Let;
-                    } else {
-                        break :zz Token{ .Ident = ch };
-                    }
-                },
+                '0'...'9' => try self.getNumToken(),
+                'a'...'z', 'A'...'Z' => try self.getAlphToken(),
                 ' ' => null,
                 else => Token.EOF,
             });
