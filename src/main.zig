@@ -1,13 +1,9 @@
 const std = @import("std");
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
     const input = "(); let adil = 5; 23123; bob";
     std.debug.print("{s}\n", .{input});
+
     var buffer: [999]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
     const allocator = fba.allocator();
@@ -15,27 +11,49 @@ pub fn main() !void {
     var lexer = Lexer{ .Position = 0, .Input = input, .allocator = allocator };
 
     const toks = try lexer.lex();
-    for (toks.items) |opt_item| {
-        if (opt_item) |item| {
-            switch (item) {
-                .Ident, .Num => |val| std.debug.print("{s}\n", .{val}),
-                else => std.debug.print("{any}\n", .{item}),
-            }
+    for (toks.items) |item| {
+        switch (item) {
+            .Ident, .Num => |val| std.debug.print("{s}\n", .{val}),
+            else => std.debug.print("{any}\n", .{item}),
         }
     }
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    try bw.flush(); // don't forget to flush!
 }
 const Lexer = struct {
     Position: u32,
     Input: []const u8,
     allocator: std.mem.Allocator,
 
+    pub fn lex(self: *Lexer) !std.ArrayList(Token) {
+        var list = std.ArrayList(Token).init(self.allocator);
+        if (try self.getToken(self.Input[0])) |t| {
+            try list.append(t);
+        }
+
+        while (self.tryNext()) |c| {
+            if (try self.getToken(c)) |t| {
+                try list.append(t);
+            }
+        }
+        return list;
+    }
+    fn getToken(self: *Lexer, char: u8) !?Token {
+        const tok = switch (char) {
+            '(' => Token.LParen,
+            ')' => Token.RParen,
+            '=' => Token.Equal,
+            ';' => Token.SemiColon,
+            '{' => Token.RBrace,
+            '}' => Token.LBrace,
+            '[' => Token.LBracket,
+            ']' => Token.RBracket,
+            'a'...'z', 'A'...'Z' => try self.getAlphToken(),
+            '0'...'9' => try self.getNumToken(),
+
+            ' ' => null,
+            else => Token.EOF,
+        };
+        return tok;
+    }
     fn next(self: *Lexer) u8 {
         self.Position = self.Position + 1;
         return self.Input[self.Position];
@@ -90,53 +108,16 @@ const Lexer = struct {
     }
     fn getNumToken(self: *Lexer) !Token {
         const ch = try self.getWordWithCheck(isNum);
-
         return Token{ .Num = ch };
     }
 
     fn getAlphToken(self: *Lexer) !Token {
-        const ch = try self.getWord();
+        const ch = try (self.getWord());
         if (std.mem.eql(u8, ch, "let") or std.mem.eql(u8, ch, "LET")) {
             return Token.Let;
         } else {
             return Token{ .Ident = ch };
         }
-    }
-    pub fn lex(self: *Lexer) !std.ArrayList(?Token) {
-        var list = std.ArrayList(?Token).init(self.allocator);
-        try list.append(switch (self.Input[self.Position]) {
-            '(' => Token.LParen,
-            ')' => Token.RParen,
-            '=' => Token.Equal,
-            ';' => Token.SemiColon,
-            '{' => Token.RBrace,
-            '}' => Token.LBrace,
-            '[' => Token.LBracket,
-            ']' => Token.RBracket,
-            'a'...'z', 'A'...'Z' => try self.getAlphToken(),
-            '0'...'9' => try self.getNumToken(),
-
-            ' ' => null,
-            else => Token.EOF,
-        });
-
-        while (self.tryNext()) |c| {
-            try list.append(switch (c) {
-                '(' => Token.LParen,
-                ')' => Token.RParen,
-                '=' => Token.Equal,
-                ';' => Token.SemiColon,
-                '{' => Token.RBrace,
-                '}' => Token.LBrace,
-                '[' => Token.LBracket,
-                ']' => Token.RBracket,
-                '0'...'9' => try self.getNumToken(),
-                'a'...'z', 'A'...'Z' => try self.getAlphToken(),
-                ' ' => null,
-                else => Token.EOF,
-            });
-        }
-        return list;
     }
 };
 const Token = union(enum) {
