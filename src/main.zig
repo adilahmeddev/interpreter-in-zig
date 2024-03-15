@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const input = "(); let adil = 5; 23123; bob";
+    const input = "(); let adil = 5; 23123; bob ! fn else if ";
     std.debug.print("{s}\n", .{input});
 
     var buffer: [999]u8 = undefined;
@@ -46,6 +46,8 @@ const Lexer = struct {
             '}' => Token.LBrace,
             '[' => Token.LBracket,
             ']' => Token.RBracket,
+            '!' => Token.Bang,
+
             'a'...'z', 'A'...'Z' => try self.getAlphToken(),
             '0'...'9' => try self.getNumToken(),
 
@@ -115,18 +117,39 @@ const Lexer = struct {
         const ch = try (self.getWord());
         if (std.mem.eql(u8, ch, "let") or std.mem.eql(u8, ch, "LET")) {
             return Token.Let;
+        } else if (std.mem.eql(u8, ch, "bang") or std.mem.eql(u8, ch, "BANG")) {
+            return Token.Bang;
+        } else if (std.mem.eql(u8, ch, "if") or std.mem.eql(u8, ch, "IF")) {
+            return Token.If;
+        } else if (std.mem.eql(u8, ch, "ELSE") or std.mem.eql(u8, ch, "else")) {
+            return Token.Else;
+        } else if (std.mem.eql(u8, ch, "RETURN") or std.mem.eql(u8, ch, "return")) {
+            return Token.Return;
+        } else if (std.mem.eql(u8, ch, "FALSE") or std.mem.eql(u8, ch, "false")) {
+            return Token.False;
+        } else if (std.mem.eql(u8, ch, "FN") or std.mem.eql(u8, ch, "fn")) {
+            return Token.func;
+        } else if (std.mem.eql(u8, ch, "TRUE") or std.mem.eql(u8, ch, "true")) {
+            return Token.True;
         } else {
             return Token{ .Ident = ch };
         }
     }
 };
 const Token = union(enum) {
+    If,
+    Else,
+    Return,
+    False,
+    func,
+    True,
     LParen,
     RParen,
     Let,
     Ident: []const u8,
     Equal,
     SemiColon,
+    Bang,
     Num: []const u8,
     LBrace,
     RBrace,
@@ -147,9 +170,16 @@ const Token = union(enum) {
             .RBrace => return 9,
             .LBracket => return 10,
             .RBracket => return 11,
-            .EOF => return 12,
+            .Bang => return 12,
+            .If => return 13,
+            .Else => return 14,
+            .Return => return 15,
+            .False => return 16,
+            .func => return 17,
+            .True => return 18,
+            .EOF => return 19,
         }
     }
 };
 
-const TokenTag = enum { LParen, Rparen, Let, Ident, Equal, SemiColon, Num, LBrace, RBrace, LBracket, RBracket, EOF };
+const TokenTag = enum { If, Else, Return, False, func, True, LParen, Rparen, Let, Ident, Equal, Bang, SemiColon, Num, LBrace, RBrace, LBracket, RBracket, EOF };
