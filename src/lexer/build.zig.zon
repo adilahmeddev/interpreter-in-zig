@@ -1,0 +1,13 @@
+.{
+    .name = "lexer",
+    .version = "0.1.0",
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "lexer.zig",
+	"token.zig",
+        //"LICENSE",
+        //"README.md",
+    },
+}
