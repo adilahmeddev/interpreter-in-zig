@@ -42,6 +42,50 @@ pub const Token = union(enum) {
             .EOF => return 19,
         }
     }
+
+    pub fn toString(self: Token) []const u8 {
+        return switch (self) {
+            .If => "if",
+            .Else => "else",
+            .Return => "return",
+            .False => "false",
+            .func => "fn",
+            .True => "true",
+            .LParen => "(",
+            .RParen => ")",
+            .Let => "let",
+            .Ident => |v| v,
+            .Equal => "=",
+            .Bang => "!",
+            .SemiColon => ";",
+            .Num => |v| v,
+            .LBrace => "{",
+            .RBrace => "}",
+            .LBracket => "[",
+            .RBracket => "]",
+            .EOF => "",
+        };
+    }
 };
 
-pub const TokenTag = enum { If, Else, Return, False, func, True, LParen, Rparen, Let, Ident, Equal, Bang, SemiColon, Num, LBrace, RBrace, LBracket, RBracket, EOF };
+pub const TokenTag = enum {
+    If,
+    Else,
+    Return,
+    False,
+    func,
+    True,
+    LParen,
+    RParen,
+    Let,
+    Ident,
+    Equal,
+    Bang,
+    SemiColon,
+    Num,
+    LBrace,
+    RBrace,
+    LBracket,
+    RBracket,
+    EOF,
+};

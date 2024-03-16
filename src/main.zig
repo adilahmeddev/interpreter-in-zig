@@ -1,6 +1,7 @@
 const std = @import("std");
 const lxr = @import("lexer/lex.zig");
 const Lexer = lxr.lexer.Lexer;
+const TokenTag = lxr.token.TokenTag;
 pub fn main() !void {
     const input = "(); let adil = 5; 23123; bob ! fn else if ";
     std.debug.print("{s}\n", .{input});
@@ -13,9 +14,6 @@ pub fn main() !void {
 
     const toks = try lexer.lex();
     for (toks.items) |item| {
-        switch (item) {
-            .Ident, .Num => |val| std.debug.print("{s}\n", .{val}),
-            else => std.debug.print("{any}\n", .{item}),
-        }
+        std.debug.print("{s}\n", .{item.toString()});
     }
 }
