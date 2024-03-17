@@ -3,7 +3,6 @@ const Token = @import("../lexer/lex.zig").Token;
 const TokenTag = @import("../lexer/lex.zig").TokenTag;
 const ArrayList = std.ArrayList;
 pub const Parser = struct {
-    //statements: ArrayList(Statement),
     allocator: std.mem.Allocator,
     tokens: ArrayList(Token),
     position: u32,
@@ -13,18 +12,23 @@ pub const Parser = struct {
 
         while (self.position < self.tokens.items.len) {
             std.debug.print("parsing {any}\n", .{self.currToken()});
-            try statements.append(try self.parseStatement(self.currToken()));
-            self.position = self.position + 1;
+            const statement = try self.parseStatement(self.currToken());
+            if (!std.mem.eql(u8, @tagName(statement), "St")) {
+                try statements.append(statement);
+            }
+            self.nextToken();
         }
         std.debug.print("done parsing\n", .{});
         return statements;
     }
+
     fn peekToken(self: Parser) ?Token {
         if (self.position < self.tokens.items.len - 1) {
             return self.tokens.items[self.position + 1];
         }
         return null;
     }
+
     fn parseStatement(self: *Parser, token: Token) !Statement {
         return switch (token) {
             .If => Statement.St,
@@ -35,49 +39,14 @@ pub const Parser = struct {
             .True => Statement.St,
             .LParen => Statement.St,
             .RParen => Statement.St,
-            .Let => let: {
-                const ident: ?[]const u8 = id: {
-                    if (self.peekToken()) |tok| {
-                        break :id switch (tok) {
-                            .Ident => |v| v,
-                            else => null,
-                        };
-                    }
-                    break :id null;
-                };
-                if (ident) |name| {
-                    self.position = self.position + 1;
-                    const isEquals = isE: {
-                        if (self.peekToken()) |sym| {
-                            self.position = self.position + 1;
-                            break :isE switch (sym) {
-                                .Equal => true,
-                                else => false,
-                            };
-                        }
-                        break :isE false;
-                    };
-                    if (isEquals) {
-                        self.position = self.position + 1;
-                        switch (self.currToken()) {
-                            .String => |v| {
-                                break :let Statement{ .LetStatement = Node{ .Name = name, .Value = Expression{ .StringLiteral = v } } };
-                            },
-                            .Num => |v| {
-                                break :let Statement{ .LetStatement = Node{ .Name = name, .Value = Expression{ .NumLiteral = v } } };
-                            },
-
-                            else => {
-                                std.debug.print("{any}\n", .{self.currToken()});
-                                break :let error.ExpressionAfterLetIsNotLiteral;
-                            },
-                        }
-                    }
+            .Let => try self.parseLetStatement(),
+            .Ident => ident: {
+                if (self.parseIdentityStatement()) |val| {
+                    break :ident val;
+                } else |err| {
+                    break :ident err;
                 }
-
-                break :let error.NoIdentifierAfterLet;
             },
-            .Ident => Statement.St,
             .Equal => Statement.St,
             .Bang => Statement.St,
             .SemiColon => Statement.St,
@@ -90,36 +59,94 @@ pub const Parser = struct {
             .String => Statement.St,
         };
     }
-    fn parseExpression(self: *Parser) Expression {
-        switch (self.currToken()) {
-            .Num => {},
-            .String => {},
+
+    fn parseIdentityExpression(self: *Parser) !Expression {
+        return switch (self.currToken()) {
+            .Ident => |v| Expression{ .IdentityExpression = v },
+            else => {
+                return error.TokenTypeNotIdentity;
+            },
+        };
+    }
+
+    fn parseIdentityStatement(self: *Parser) !Statement {
+        if (self.parseIdentityExpression()) |expression| {
+            return switch (expression) {
+                .IdentityExpression => |val| Statement{ .ExpressionStatement = Expression{ .IdentityExpression = val } },
+                else => error.ExpressionTypeNotIdentity,
+            };
+        } else |err| {
+            return err;
         }
     }
-    fn currToken(self: Parser) Token {
+
+    fn nextToken(self: *Parser) void {
+        self.position = self.position + 1;
+    }
+    fn parseLetStatement(self: *Parser) !Statement {
+        if (!std.mem.eql(u8, @tagName(self.currToken()), "Let")) {
+            return error.DoesNotStartWithlet;
+        }
+        self.nextToken();
+        const name = try self.parseIdentityExpression();
+        self.nextToken();
+        const isEquals = switch (self.currToken()) {
+            .Equal => true,
+            else => false,
+        };
+
+        if (isEquals) {
+            self.nextToken();
+            return Statement{ .LetStatement = LetStatement{ .Name = name.IdentityExpression, .Value = try self.parseExpression() } };
+        } else {
+            return error.NoEqualsAfterIdentityInLetExpression;
+        }
+    }
+
+    fn parseExpression(self: *Parser) !Expression {
+        switch (self.currToken()) {
+            .String => |v| {
+                return Expression{ .StringLiteral = v };
+            },
+            .Num => |v| {
+                return Expression{ .NumLiteral = v };
+            },
+
+            else => {
+                return error.ExpressionAfterLetIsNotLiteral;
+            },
+        }
+    }
+    fn currToken(self: *Parser) Token {
         return self.tokens.items[self.position];
     }
 };
 pub const Expression = union(ExpressionTag) {
     StringLiteral: []const u8,
     NumLiteral: u32,
+    IdentityExpression: []const u8,
 };
 
 pub const ExpressionTag = enum {
     StringLiteral,
     NumLiteral,
+    IdentityExpression,
 };
 pub const Statement = union(StatementTag) {
-    LetStatement: Node,
+    LetStatement: LetStatement,
+    ExpressionStatement: ExpressionTag,
     St,
 };
 
 pub const StatementTag = enum {
     LetStatement,
+    ExpressionStatement,
     St,
 };
 
-pub const Node = struct {
+pub const Node = struct {};
+
+pub const LetStatement = struct {
     Name: []const u8,
     Value: Expression,
 };
