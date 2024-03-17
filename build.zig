@@ -18,11 +18,7 @@ pub fn build(b: *std.Build) void {
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
-    const lex = b.createModule(.{
-        .root_source_file = .{ .path = "src/lexer/build.zig" },
-        .target = target,
-        .optimize = optimize,
-    }); // standard location when the user invokes the "install" step (the default
+    // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
 
     // step is evaluated that depends on it. The next line below will establish
@@ -33,8 +29,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addImport("lexer", lex);
-    exe.root_module.addLibraryPath(.{ .path = "src/lexer/build.zig" });
     const run_cmd = b.addRunArtifact(exe);
 
     // By making the run step depend on the install step, it will be run from the

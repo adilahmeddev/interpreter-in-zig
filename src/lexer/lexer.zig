@@ -1,6 +1,5 @@
 const std = @import("std");
-const Token = @import("./token.zig").Token;
-const TokenTag = @import("./token.zig").TokenTag;
+const Token = @import("token.zig").Token;
 
 pub const Lexer = struct {
     Position: u32,
@@ -34,7 +33,7 @@ pub const Lexer = struct {
 
             'a'...'z', 'A'...'Z' => try self.getAlphToken(),
             '0'...'9' => try self.getNumToken(),
-
+            '"' => Token{ .String = try self.getStringLiteral() },
             ' ' => null,
             else => Token.EOF,
         };
@@ -74,6 +73,20 @@ pub const Lexer = struct {
         return list.items;
     }
 
+    fn getStringLiteral(self: *Lexer) ![]const u8 {
+        _ = self.next();
+        var list = std.ArrayList(u8).init(self.allocator);
+        try list.append(self.Input[self.Position]);
+        while (self.tryNext()) |val| {
+            try list.append(val);
+            if (val == '"') {
+                return list.items;
+            }
+        }
+        const err = error.InvalidString;
+        return err;
+    }
+
     fn getWord(self: *Lexer) ![]const u8 {
         var list = std.ArrayList(u8).init(self.allocator);
         try list.append(self.Input[self.Position]);
@@ -94,7 +107,8 @@ pub const Lexer = struct {
     }
     fn getNumToken(self: *Lexer) !Token {
         const ch = try self.getWordWithCheck(isNum);
-        return Token{ .Num = ch };
+        const parsedI32 = try std.fmt.parseInt(u32, ch, 10);
+        return Token{ .Num = parsedI32 };
     }
 
     fn getAlphToken(self: *Lexer) !Token {
@@ -112,7 +126,7 @@ pub const Lexer = struct {
         } else if (std.mem.eql(u8, ch, "FALSE") or std.mem.eql(u8, ch, "false")) {
             return Token.False;
         } else if (std.mem.eql(u8, ch, "FN") or std.mem.eql(u8, ch, "fn")) {
-            return Token.func;
+            return Token.Func;
         } else if (std.mem.eql(u8, ch, "TRUE") or std.mem.eql(u8, ch, "true")) {
             return Token.True;
         } else {
