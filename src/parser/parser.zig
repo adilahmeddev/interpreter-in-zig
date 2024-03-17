@@ -13,8 +13,8 @@ pub const Parser = struct {
         while (self.position < self.tokens.items.len) {
             std.debug.print("parsing {any}\n", .{self.currToken()});
             const statement = try self.parseStatement(self.currToken());
-            if (!std.mem.eql(u8, @tagName(statement), "St")) {
-                try statements.append(statement);
+            if (statement) |stmt| {
+                try statements.append(stmt);
             }
             self.nextToken();
         }
@@ -29,16 +29,16 @@ pub const Parser = struct {
         return null;
     }
 
-    fn parseStatement(self: *Parser, token: Token) !Statement {
+    fn parseStatement(self: *Parser, token: Token) !?Statement {
         return switch (token) {
-            .If => Statement.St,
-            .Else => Statement.St,
-            .Return => Statement.St,
-            .False => Statement.St,
-            .Func => Statement.St,
-            .True => Statement.St,
-            .LParen => Statement.St,
-            .RParen => Statement.St,
+            .If => null,
+            .Else => null,
+            .Return => null,
+            .False => null,
+            .Func => null,
+            .True => null,
+            .LParen => null,
+            .RParen => null,
             .Let => try self.parseLetStatement(),
             .Ident => ident: {
                 if (self.parseIdentityStatement()) |val| {
@@ -47,19 +47,35 @@ pub const Parser = struct {
                     break :ident err;
                 }
             },
-            .Equal => Statement.St,
-            .Bang => Statement.St,
-            .SemiColon => Statement.St,
-            .Num => Statement.St,
-            .LBrace => Statement.St,
-            .RBrace => Statement.St,
-            .LBracket => Statement.St,
-            .RBracket => Statement.St,
-            .EOF => Statement.St,
-            .String => Statement.St,
+            .Equal => null,
+            .Bang => null,
+            .SemiColon => null,
+            .Num => Statement{ .ExpressionStatement = try self.parseNumExpression() },
+            .LBrace => null,
+            .RBrace => null,
+            .LBracket => null,
+            .RBracket => null,
+            .EOF => null,
+            .String => Statement{ .ExpressionStatement = try self.parseStringExpression() },
         };
     }
 
+    fn parseNumExpression(self: *Parser) !Expression {
+        return switch (self.currToken()) {
+            .Num => |v| Expression{ .NumLiteral = v },
+            else => {
+                return error.TokenTypeNotIdentity;
+            },
+        };
+    }
+    fn parseStringExpression(self: *Parser) !Expression {
+        return switch (self.currToken()) {
+            .String => |v| Expression{ .StringLiteral = v },
+            else => {
+                return error.TokenTypeNotIdentity;
+            },
+        };
+    }
     fn parseIdentityExpression(self: *Parser) !Expression {
         return switch (self.currToken()) {
             .Ident => |v| Expression{ .IdentityExpression = v },

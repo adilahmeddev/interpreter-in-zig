@@ -4,7 +4,7 @@ const Parser = @import("parser/parser.zig").Parser;
 const Lexer = lxr.Lexer;
 const TokenTag = @import("lexer").TokenTag;
 pub fn main() !void {
-    const input = "let adil = 5; 23123; bob ! fn else if ";
+    const input = "let adil = 5; 23123; bob; \"hi\" ! fn else if ";
     std.debug.print("{s}\n", .{input});
 
     var buffer: [99999]u8 = undefined;
