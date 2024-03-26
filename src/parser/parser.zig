@@ -30,34 +30,18 @@ pub const Parser = struct {
     }
 
     fn parseStatement(self: *Parser, token: Token) !?Statement {
-        return switch (token) {
-            .If => null,
-            .Else => null,
-            .Return => null,
-            .False => null,
-            .Func => null,
-            .True => null,
-            .LParen => null,
-            .RParen => null,
-            .Let => try self.parseLetStatement(),
-            .Ident => ident: {
-                if (self.parseIdentityStatement()) |val| {
-                    break :ident val;
-                } else |err| {
-                    break :ident err;
-                }
-            },
-            .Equal => null,
-            .Bang => null,
-            .SemiColon => null,
-            .Num => Statement{ .ExpressionStatement = try self.parseNumExpression() },
-            .LBrace => null,
-            .RBrace => null,
-            .LBracket => null,
-            .RBracket => null,
-            .EOF => null,
-            .String => Statement{ .ExpressionStatement = try self.parseStringExpression() },
-        };
+        if (token == .Let) {
+            return try self.parseLetStatement();
+        }
+        if (token == .Ident) {
+            return self.parseIdentityStatement();
+        }
+        if (token == .Num) {
+            return Statement{ .ExpressionStatement = try self.parseNumExpression() };
+        }
+        if (token == .String) {
+            return Statement{ .ExpressionStatement = try self.parseStringExpression() };
+        }
     }
 
     fn parseNumExpression(self: *Parser) !Expression {
@@ -165,4 +149,13 @@ pub const Node = struct {};
 pub const LetStatement = struct {
     Name: []const u8,
     Value: Expression,
+};
+
+pub const Precedence = enum {
+    EQUALS,
+    LESSGREATER,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL,
 };
